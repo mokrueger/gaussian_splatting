@@ -113,12 +113,12 @@ __global__ void precompute_rgb_from_sh_backward_kernel(
 void precompute_rgb_from_sh_cuda(
     const torch::Tensor xyz,
     const torch::Tensor sh_coeff,
-    const torch::Tensor camera_T_world,
+    const torch::Tensor world_T_camera,
     torch::Tensor rgb
 ) {
     CHECK_VALID_INPUT(xyz);
     CHECK_VALID_INPUT(sh_coeff);
-    CHECK_VALID_INPUT(camera_T_world);
+    CHECK_VALID_INPUT(world_T_camera);
     CHECK_VALID_INPUT(rgb);
 
     const int N = xyz.size(0);
@@ -131,8 +131,8 @@ void precompute_rgb_from_sh_cuda(
     } else {
         num_sh_coeff = 1;
     }
-    TORCH_CHECK(camera_T_world.size(0) == 4, "camera_T_world should be 4x4 transformation matrix");
-    TORCH_CHECK(camera_T_world.size(1) == 4, "camera_T_world should be 4x4 transformation matrix");
+    TORCH_CHECK(world_T_camera.size(0) == 4, "world_T_camera should be 4x4 transformation matrix");
+    TORCH_CHECK(world_T_camera.size(1) == 4, "world_T_camera should be 4x4 transformation matrix");
     TORCH_CHECK(rgb.size(0) == N, "N xyz and rgb should match");
     TORCH_CHECK(rgb.size(1) == 3, "Output rgb should have 3 channels");
 
@@ -143,12 +143,12 @@ void precompute_rgb_from_sh_cuda(
 
     if (xyz.dtype() == torch::kFloat32) {
         CHECK_FLOAT_TENSOR(sh_coeff);
-        CHECK_FLOAT_TENSOR(camera_T_world);
+        CHECK_FLOAT_TENSOR(world_T_camera);
         CHECK_FLOAT_TENSOR(rgb);
 
-        const float camera_x = camera_T_world[0][3].item<float>();
-        const float camera_y = camera_T_world[1][3].item<float>();
-        const float camera_z = camera_T_world[2][3].item<float>();
+        const float camera_x = world_T_camera[0][3].item<float>();
+        const float camera_y = world_T_camera[1][3].item<float>();
+        const float camera_z = world_T_camera[2][3].item<float>();
         if (num_sh_coeff == 1) {
             precompute_rgb_from_sh_kernel<float, 1><<<gridsize, blocksize>>>(
                 xyz.data_ptr<float>(),
@@ -194,12 +194,12 @@ void precompute_rgb_from_sh_cuda(
         }
     } else if (xyz.dtype() == torch::kFloat64) {
         CHECK_DOUBLE_TENSOR(sh_coeff);
-        CHECK_DOUBLE_TENSOR(camera_T_world);
+        CHECK_DOUBLE_TENSOR(world_T_camera);
         CHECK_DOUBLE_TENSOR(rgb);
 
-        const double camera_x = camera_T_world[0][3].item<double>();
-        const double camera_y = camera_T_world[1][3].item<double>();
-        const double camera_z = camera_T_world[2][3].item<double>();
+        const double camera_x = world_T_camera[0][3].item<double>();
+        const double camera_y = world_T_camera[1][3].item<double>();
+        const double camera_z = world_T_camera[2][3].item<double>();
         if (num_sh_coeff == 1) {
             precompute_rgb_from_sh_kernel<double, 1><<<gridsize, blocksize>>>(
                 xyz.data_ptr<double>(),
@@ -251,19 +251,19 @@ void precompute_rgb_from_sh_cuda(
 
 void precompute_rgb_from_sh_backward_cuda(
     const torch::Tensor xyz,
-    const torch::Tensor camera_T_world,
+    const torch::Tensor world_T_camera,
     const torch::Tensor grad_rgb,
     torch::Tensor grad_sh
 ) {
     CHECK_VALID_INPUT(xyz);
-    CHECK_VALID_INPUT(camera_T_world);
+    CHECK_VALID_INPUT(world_T_camera);
     CHECK_VALID_INPUT(grad_rgb);
     CHECK_VALID_INPUT(grad_sh);
 
     const int N = xyz.size(0);
     TORCH_CHECK(xyz.size(1) == 3, "Input xyz should have 3 channels");
-    TORCH_CHECK(camera_T_world.size(0) == 4, "camera_T_world should be 4x4 transformation matrix");
-    TORCH_CHECK(camera_T_world.size(1) == 4, "camera_T_world should be 4x4 transformation matrix");
+    TORCH_CHECK(world_T_camera.size(0) == 4, "world_T_camera should be 4x4 transformation matrix");
+    TORCH_CHECK(world_T_camera.size(1) == 4, "world_T_camera should be 4x4 transformation matrix");
     TORCH_CHECK(grad_rgb.size(0) == N, "N xyz and grad_rgb should match");
     TORCH_CHECK(grad_rgb.size(1) == 3, "Input grad_rgb should have 3 channels");
     TORCH_CHECK(grad_sh.size(0) == N, "N xyz and grad_sh should match");
@@ -281,13 +281,13 @@ void precompute_rgb_from_sh_backward_cuda(
     dim3 blocksize(max_threads_per_block, 1, 1);
 
     if (xyz.dtype() == torch::kFloat32) {
-        CHECK_FLOAT_TENSOR(camera_T_world);
+        CHECK_FLOAT_TENSOR(world_T_camera);
         CHECK_FLOAT_TENSOR(grad_rgb);
         CHECK_FLOAT_TENSOR(grad_sh);
 
-        const float camera_x = camera_T_world[0][3].item<float>();
-        const float camera_y = camera_T_world[1][3].item<float>();
-        const float camera_z = camera_T_world[2][3].item<float>();
+        const float camera_x = world_T_camera[0][3].item<float>();
+        const float camera_y = world_T_camera[1][3].item<float>();
+        const float camera_z = world_T_camera[2][3].item<float>();
         if (num_sh_coeff == 1) {
             precompute_rgb_from_sh_backward_kernel<float, 1><<<gridsize, blocksize>>>(
                 xyz.data_ptr<float>(),
@@ -332,13 +332,13 @@ void precompute_rgb_from_sh_backward_cuda(
             AT_ERROR("Unsupported number of SH coefficients: ", num_sh_coeff);
         }
     } else if (xyz.dtype() == torch::kFloat64) {
-        CHECK_DOUBLE_TENSOR(camera_T_world);
+        CHECK_DOUBLE_TENSOR(world_T_camera);
         CHECK_DOUBLE_TENSOR(grad_rgb);
         CHECK_DOUBLE_TENSOR(grad_sh);
 
-        const double camera_x = camera_T_world[0][3].item<double>();
-        const double camera_y = camera_T_world[1][3].item<double>();
-        const double camera_z = camera_T_world[2][3].item<double>();
+        const double camera_x = world_T_camera[0][3].item<double>();
+        const double camera_y = world_T_camera[1][3].item<double>();
+        const double camera_z = world_T_camera[2][3].item<double>();
         if (num_sh_coeff == 1) {
             precompute_rgb_from_sh_backward_kernel<double, 1><<<gridsize, blocksize>>>(
                 xyz.data_ptr<double>(),

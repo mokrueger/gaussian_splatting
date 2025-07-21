@@ -93,13 +93,13 @@ std::tuple<torch::Tensor, torch::Tensor> get_sorted_gaussian_list(
 void precompute_rgb_from_sh_cuda(
     const torch::Tensor xyz,
     const torch::Tensor sh_coeff,
-    const torch::Tensor camera_T_world,
+    const torch::Tensor world_T_camera,
     torch::Tensor rgb
 );
 
 void precompute_rgb_from_sh_backward_cuda(
     const torch::Tensor xyz,
-    const torch::Tensor camera_T_world,
+    const torch::Tensor world_T_camera,
     const torch::Tensor grad_rgb,
     torch::Tensor grad_sh
 );

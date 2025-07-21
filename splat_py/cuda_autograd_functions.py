@@ -104,9 +104,9 @@ class ComputeConic(torch.autograd.Function):
 
 class PrecomputeRGBFromSH(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, sh_coeffs, xyz, camera_T_world):
+    def forward(ctx, sh_coeffs, xyz, world_T_camera):
         rgb = torch.zeros(xyz.shape[0], 3, dtype=sh_coeffs.dtype, device=sh_coeffs.device)
-        precompute_rgb_from_sh_cuda(xyz, sh_coeffs, camera_T_world, rgb)
+        precompute_rgb_from_sh_cuda(xyz, sh_coeffs, world_T_camera, rgb)
 
         if sh_coeffs.dim() == 2:
             num_sh_coeff = torch.tensor(1, dtype=torch.int, device=sh_coeffs.device)
@@ -114,16 +114,16 @@ class PrecomputeRGBFromSH(torch.autograd.Function):
             num_sh_coeff = torch.tensor(
                 sh_coeffs.shape[2], dtype=torch.int, device=sh_coeffs.device
             )
-        ctx.save_for_backward(xyz, camera_T_world, num_sh_coeff)
+        ctx.save_for_backward(xyz, world_T_camera, num_sh_coeff)
         return rgb
 
     @staticmethod
     def backward(ctx, grad_rgb):
-        xyz, camera_T_world, num_sh_coeff = ctx.saved_tensors
+        xyz, world_T_camera, num_sh_coeff = ctx.saved_tensors
         grad_sh_coeffs = torch.zeros(
             xyz.shape[0], 3, num_sh_coeff.item(), dtype=xyz.dtype, device=xyz.device
         )
-        precompute_rgb_from_sh_backward_cuda(xyz, camera_T_world, grad_rgb, grad_sh_coeffs)
+        precompute_rgb_from_sh_backward_cuda(xyz, world_T_camera, grad_rgb, grad_sh_coeffs)
         return grad_sh_coeffs, None, None
 
 
